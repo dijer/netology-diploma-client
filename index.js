@@ -20,12 +20,14 @@ input.question('Enter your username?\n', email => {
             socket.close();
             input.close();
         }
+
+        const cookie = res.headers['set-cookie'];
         
-        const { id: userId } = data;
-        console.log(data);
         const socket = socketIO.connect(`${SERVER_URL}:${SERVER_PORT}`, {
             reconnect: true,
-            query: `userId=${userId}`,
+            extraHeaders: {
+                cookie: cookie.join(', '),
+            },
         });
 
         socket.on('connect', socket => {
@@ -39,14 +41,19 @@ input.question('Enter your username?\n', email => {
             console.log('Leave chat');
         });
 
-        // const user = new User(username);
+        socket.on('chatHistory', messages => {
+            messages.forEach(message => console.log(message.text));
+        });
         
-        input.on('line', message => {
-            if (message === '/exit') {
-                socket.close();
-                input.close();
-            }
-            socket.emit('sendMessage', userId, message);
+        input.question('Reciever email:', recieverEmail => {
+            const history = socket.emit('getHistory', recieverEmail);
+            input.on('line', message => {
+                if (message === '/exit') {
+                    socket.close();
+                    input.close();
+                }
+                socket.emit('sendMessage', recieverEmail, message);
+            });
         });
     });
 });
